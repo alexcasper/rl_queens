@@ -1,0 +1,18 @@
+[submodule ".reference/Gymnasium"]
+	path = .reference/Gymnasium
+	url = https://github.com/Farama-Foundation/Gymnasium
+[submodule ".reference/OpenEnv"]
+	path = .reference/OpenEnv
+	url = https://github.com/meta-pytorch/OpenEnv.git
+[submodule ".reference/unsloth"]
+	path = .reference/unsloth
+	url = https://github.com/unslothai/unsloth.git
+[submodule ".reference/openspiel"]
+	path = .reference/openspiel
+	url = https://github.com/google-deepmind/open_spiel
+[submodule ".reference/.reference/linkedinqueens"]
+	path = .reference/.reference/linkedinqueens
+	url = https://github.com/samimsu/queens-game-linkedin.git
+[submodule ".reference/linkedinqueens"]
+	path = .reference/linkedinqueens
+	url = https://github.com/samimsu/queens-game-linkedin.git

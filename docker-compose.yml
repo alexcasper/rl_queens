@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  queens-training:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/amd64  # For MI300X compatibility
+    runtime: rocm  # ROCm runtime for AMD GPUs
+    # Alternatively, use device requests for newer docker compose
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: amd
+    #           count: 1
+    #           capabilities: [gpu]
+    environment:
+      # ROCm and MI300X settings
+      - HIP_VISIBLE_DEVICES=0
+      - HSA_OVERRIDE_GFX_VERSION=11.0.0
+      - ROCM_PATH=/opt/rocm
+      - LD_LIBRARY_PATH=/opt/rocm/lib:$LD_LIBRARY_PATH
+      - PATH=/opt/rocm/bin:/usr/local/bin:$PATH
+      # Model and training settings
+      - PYTHONPATH=/app:$PYTHONPATH
+      - PYTHONUNBUFFERED=1
+      # HF Hub settings (optional, for model caching)
+      - HF_HUB_ENABLE_HF_TRANSFER=1
+      - TRANSFORMERS_CACHE=/app/cache/transformers
+      - HF_HOME=/app/cache/huggingface
+      # TrackIO settings
+      - TRACKIO_API_KEY=${TRACKIO_API_KEY:-}
+      - TRACKIO_PROJECT=queens-rl-training_medium
+      # Logging
+      - LOG_LEVEL=INFO
+    volumes:
+      # Mount directories for persistence
+      - ./outputs_queens:/app/outputs_queens  # Store trained models
+      - ./cache:/app/cache:cached              # Model cache for faster downloads
+      - ./models:/app/models                  # Additional models
+      - ./logs:/app/logs                      # Training logs
+    ports:
+      - "8003:8003"  # Queens environment server
+      - "8000:8000"  # Optional: TrackIO monitoring
+    networks:
+      - queens-network
+    # Resource limits
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia                   # For CUDA compatibility
+              count: 1
+              capabilities: [gpu]
+        # MI300X has 192GB VRAM, reserve what we need
+        limits:
+          memory: 256GB                      # Plenty for large models
+        reservations:
+          memory: 128GB
+
+  # Optional: Monitoring service
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:cached
+    networks:
+      - queens-network
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana-dashboards:/var/lib/grafana/dashboards:cached
+    networks:
+      - queens-network
+    profiles:
+      - monitoring
+
+networks:
+  queens-network:
+    driver: bridge
+
+volumes:
+  grafana_data:
+
+# Environment file for sensitive data
+x-environment-file:
+  - .env

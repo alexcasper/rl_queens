@@ -1,0 +1,9 @@
+.clinerules
+.reference
+.reference_guides
+.venv
+cache
+logs
+models
+monitoring
+outputs_queens
