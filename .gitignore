@@ -2,6 +2,7 @@
 .reference
 .reference_guides
 .venv
+.env
 cache
 logs
 models

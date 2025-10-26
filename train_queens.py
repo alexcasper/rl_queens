@@ -21,32 +21,42 @@ sys.path.insert(0, 'src')
 
 from envs.queens_env import QueensEnv, QueensAction
 
+
 # Configuration
-MAX_SEQ_LENGTH = 768
-LORA_RANK = 4
-MODEL_NAME = "unsloth/gpt-oss-20b"
-OUTPUT_DIR = "outputs_queens"
-MAX_STEPS = 600
-BATCH_SIZE = 1
-GRADIENT_ACCUMULATION_STEPS = 1
-NUM_GENERATIONS = 2
+MAX_SEQ_LENGTH = os.getenv('MAX_SEQ_LENGTH',default=768)
+LORA_RANK = os.getenv('LORA_RANK',default=4)
+MODEL_NAME = os.getenv('MODEL_NAME',default="ERROR")
+HF_TOKEN = os.getenv('HF_TOKEN',default=None)
+OUTPUT_DIR = os.getenv('OUTPUT_DIR',default="outputs_queens")
+MAX_STEPS = os.getenv('MAX_STEPS',default=300)
+BATCH_SIZE = os.getenv("BATCH_SIZE",default=1)
+GRADIENT_ACCUMULATION_STEPS = os.getenv("GRADIENT_ACCUMULATION_STEPS",default=1)
+NUM_GENERATIONS = os.getenv("NUM_GENERATIONS",default=1)
 
 def setup_model():
     """Load and setup the model with LoRA"""
+    global MAX_SEQ_LENGTH,LORA_RANK,MODEL_NAME,HF_TOKEN,OUTPUT_DIR,MAX_STEPS,BATCH_SIZE,GRADIENT_ACCUMULATION_STEPS,NUM_GENERATIONS    
+    
+    print(f"model: {MODEL_NAME}")
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=MODEL_NAME,
         max_seq_length=MAX_SEQ_LENGTH,
         load_in_4bit=True,
+        cache_dir='/app/cache/transformers',
+        token=os.environ.get('HF_TOKEN'),
+        #fast_inference = True, # Enable vLLM fast inference
+        gpu_memory_utilization = 0.4,
+        max_lora_rank = LORA_RANK
     )
-
+    print('getting peft model')
     model = FastLanguageModel.get_peft_model(
         model,
         r=LORA_RANK,
         target_modules=[
-            "q_proj", "k_proj", "v_proj", "o_proj",
+             "q_proj", "k_proj", "v_proj", "o_proj",
             "gate_proj", "up_proj", "down_proj",
         ],
-        lora_alpha=LORA_RANK * 2,
+        lora_alpha=LORA_RANK,
         use_gradient_checkpointing="unsloth",
         random_state=3407,
     )
@@ -195,6 +205,8 @@ def strategy_succeeds(completions, **kwargs):
     return scores
 
 def main():
+    global MAX_SEQ_LENGTH,LORA_RANK,MODEL_NAME,HF_TOKEN,OUTPUT_DIR,MAX_STEPS,BATCH_SIZE,GRADIENT_ACCUMULATION_STEPS,NUM_GENERATIONS    
+    
     """Main training function"""
     print("Setting up model...")
     model, tokenizer = setup_model()
@@ -228,7 +240,7 @@ def main():
         max_prompt_length=max_prompt_length,
         max_completion_length=max_completion_length,
         max_steps=MAX_STEPS,
-        save_steps=100,
+        save_steps=50,
         report_to="trackio",
         output_dir=OUTPUT_DIR,
     )
