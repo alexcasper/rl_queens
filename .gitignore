@@ -8,3 +8,4 @@ logs
 models
 monitoring
 outputs_queens
+model_*
