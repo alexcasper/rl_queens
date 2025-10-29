@@ -35,7 +35,7 @@ uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu
 
 # Install other dependencies
 echo "Installing dependencies..."
-uv pip install unsloth transformers trl datasets trackio fastapi uvicorn requests open_spiel
+uv pip install unsloth transformers trl datasets trackio fastapi uvicorn requests open_spiel 
 
 echo "Setup completed!"
 echo ""

@@ -1,0 +1,4 @@
+- [x] Analyze the differences between current and sample files
+- [x] Fix docker-compose.yml based on sample file
+- [x] Fix Dockerfile based on sample file  
+- [x] Verify the fixes are consistent and functional

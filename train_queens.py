@@ -24,14 +24,14 @@ from envs.queens_env import QueensEnv, QueensAction
 
 # Configuration
 MAX_SEQ_LENGTH = os.getenv('MAX_SEQ_LENGTH',default=768)
-LORA_RANK = os.getenv('LORA_RANK',default=4)
+LORA_RANK = 4
 MODEL_NAME = os.getenv('MODEL_NAME',default="ERROR")
 HF_TOKEN = os.getenv('HF_TOKEN',default=None)
 OUTPUT_DIR = os.getenv('OUTPUT_DIR',default="outputs_queens")
 MAX_STEPS = os.getenv('MAX_STEPS',default=300)
 BATCH_SIZE = os.getenv("BATCH_SIZE",default=1)
 GRADIENT_ACCUMULATION_STEPS = os.getenv("GRADIENT_ACCUMULATION_STEPS",default=1)
-NUM_GENERATIONS = os.getenv("NUM_GENERATIONS",default=1)
+NUM_GENERATIONS = os.getenv("NUM_GENERATIONS",default=2)
 
 def setup_model():
     """Load and setup the model with LoRA"""
@@ -40,23 +40,30 @@ def setup_model():
     print(f"model: {MODEL_NAME}")
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=MODEL_NAME,
-        max_seq_length=MAX_SEQ_LENGTH,
-        load_in_4bit=True,
-        cache_dir='/app/cache/transformers',
+        max_seq_length=int(MAX_SEQ_LENGTH),
+        load_in_4bit=False,
+        #cache_dir='/app/cache/transformers',
         token=os.environ.get('HF_TOKEN'),
         #fast_inference = True, # Enable vLLM fast inference
         gpu_memory_utilization = 0.4,
         max_lora_rank = LORA_RANK
     )
+    
+    # Set default chat template if not already set
+    if tokenizer.chat_template is None:
+        default_template = "{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
+        tokenizer.chat_template = default_template
+        print("Set default chat template for tokenizer")
+    
     print('getting peft model')
     model = FastLanguageModel.get_peft_model(
         model,
-        r=LORA_RANK,
+        r=int(LORA_RANK),
         target_modules=[
              "q_proj", "k_proj", "v_proj", "o_proj",
             "gate_proj", "up_proj", "down_proj",
         ],
-        lora_alpha=LORA_RANK,
+        lora_alpha=int(LORA_RANK) * 2,  # Typically alpha = rank * 2
         use_gradient_checkpointing="unsloth",
         random_state=3407,
     )
@@ -223,7 +230,7 @@ def main():
         [{"role": "user", "content": prompt.strip()}],
         add_generation_prompt=True
     ))
-    max_completion_length = MAX_SEQ_LENGTH - max_prompt_length
+    max_completion_length = int(MAX_SEQ_LENGTH) - max_prompt_length
 
     print("Setting up training arguments...")
     training_args = GRPOConfig(
@@ -234,14 +241,14 @@ def main():
         lr_scheduler_type="linear",
         optim="adamw_8bit",
         logging_steps=1,
-        per_device_train_batch_size=BATCH_SIZE,
-        gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS,
-        num_generations=NUM_GENERATIONS,
+        per_device_train_batch_size=int(BATCH_SIZE),
+        gradient_accumulation_steps=int(GRADIENT_ACCUMULATION_STEPS),
+        num_generations=int(NUM_GENERATIONS),
         max_prompt_length=max_prompt_length,
         max_completion_length=max_completion_length,
-        max_steps=MAX_STEPS,
+        max_steps=int(MAX_STEPS),
         save_steps=50,
-        report_to="trackio",
+        report_to="none",
         output_dir=OUTPUT_DIR,
     )
 

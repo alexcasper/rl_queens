@@ -1,62 +1,37 @@
-name: rl_queens
-
 services:
   queens-training:
     build:
       context: .
       dockerfile: Dockerfile
-    
-    platform: linux/amd64
+    image: amd-synth-finetune:latest 
     
     devices:
-      - /dev/kfd:/dev/kfd
-      - /dev/dri:/dev/dri
+      - /dev/kfd
+      - /dev/dri
+    
+    ipc: host
+    shm_size: '8gb'
+    
+    security_opt:
+      - seccomp=unconfined
     
     group_add:
       - video
       - render
     
-    security_opt:
-      - seccomp=unconfined
-    
-    ipc: host
-    shm_size: '8gb'
-    
-    ports:
-      - "8003:8003"
-      - "8000:8000"
-    
-    volumes:
-      - ./outputs_queens:/app/outputs_queens
-      - ./cache:/app/cache
-      - ./models:/app/models
-      - ./logs:/app/logs
-    
     env_file:
       - .env
     
     environment:
-      # venv activation
-      - VIRTUAL_ENV=/opt/venv
-      - PATH=/opt/venv/bin:/opt/rocm/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      
-      # Python settings
-      - PYTHONPATH=/app  # FIXED: Was pointing to python3 executable!
-      - PYTHONUNBUFFERED=1
-      
-      # ROCm settings
       - HIP_VISIBLE_DEVICES=0
-      - HSA_OVERRIDE_GFX_VERSION=11.0.0
-      - ROCM_PATH=/opt/rocm
-      - LD_LIBRARY_PATH=/opt/rocm/lib
+      - HSA_OVERRIDE_GFX_VERSION=9.4.2
       
-      # HuggingFace cache
-      - HF_HOME=/app/cache/huggingface
-      - HF_HUB_ENABLE_HF_TRANSFER=1
+    volumes:
+      - ./outputs_queens:/app/outputs_queens
+      - ./cache:/app/cache
+      - ./models:/app/models
+      - ./model_checkpoints:/app/model_checkpoints
+      - ./model_artifacts:/app/model_artifacts
+      - ./logs:/app/logs
     
-    networks:
-      - queens-network
-
-networks:
-  queens-network:
-    driver: bridge
+    command: python3 train_queens.py
